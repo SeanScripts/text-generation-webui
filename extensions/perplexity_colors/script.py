@@ -265,7 +265,7 @@ def add_dropdown_html(token, index, msg_position, color, top_tokens, top_probs, 
     #print("Token:", token, token.isspace(), '\n' in token or '\r' in token)
     output = ''
     # Use the repr to get characters like \n visible. Exclude the quotes around it
-    output += f'<div class="hoverable" id="tok_{index}_{msg_position}"><span style="color: #{color}">{html.escape(repr(token)[1:-1])}</span><div class="dropdown"><table class="dropdown-content"><tbody>'
+    output += f'<div class="hoverable" name="tok_{index}_{msg_position}"><span style="color: #{color}">{html.escape(repr(token)[1:-1])}</span><div class="dropdown"><table class="dropdown-content"><tbody>'
     for i, token_option, prob in zip(range(len(top_tokens)), top_tokens, top_probs):
         # TODO: Bold for selected token?
         # Using divs prevented the problem of divs inside spans causing issues.
@@ -274,7 +274,7 @@ def add_dropdown_html(token, index, msg_position, color, top_tokens, top_probs, 
         row_color = probability_color_scale(prob)
         row_class = ' class="selected"' if token_option == token else ''
         # This time we want to include the quotes around it so that we can see where the spaces are.
-        output += f'<tr{row_class}><td id="opt_{index}_{i}_{msg_position}" style="color: #{row_color}">{html.escape(repr(token_option))}</td><td style="color: #{row_color}">{prob:.4f}</td></tr>'
+        output += f'<tr{row_class}><td name="opt_{index}_{i}_{msg_position}" style="color: #{row_color}">{html.escape(repr(token_option))}</td><td style="color: #{row_color}">{prob:.4f}</td></tr>'
     if perplexity != 0:
         ppl_color = perplexity_color_scale(perplexity)
         output += f'<tr><td>Perplexity:</td><td style="color: #{ppl_color}">{perplexity:.4f}</td></tr>'
@@ -349,12 +349,12 @@ function sleep(ms) {
 // Note that this will only work as intended on the last agent message
 document.addEventListener("click", async function(event) {
     //console.log(event.target);
-    const id = event.target.id;
-    if (id.includes("opt_")) {
-        const id_parts = id.split("_");
-        const token_index = id_parts[1];
-        const option_index = id_parts[2];
-        const msg_pos = id_parts[3];
+    const name = event.target.getAttribute("name");
+    if (name != null && name.includes("opt_")) {
+        const name_parts = name.split("_");
+        const token_index = name_parts[1];
+        const option_index = name_parts[2];
+        const msg_pos = name_parts[3];
         // Exclude the quotes and convert newlines... Not sure about the newlines though
         // TODO: Seems like continuing generation from a newline causes problems whether you add it or not!
         const token_string = event.target.innerHTML.substring(1, event.target.innerHTML.length-1).replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"r", "g"), '').replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"n", "g"), '');
@@ -367,18 +367,21 @@ document.addEventListener("click", async function(event) {
             var msg_part = msg_parts[i];
             if (msg_part.nodeType === Node.ELEMENT_NODE) {
                 if (msg_part.nodeName == "DIV") {
-                    var current_token_index = msg_part.id.split("_")[1];
-                    var current_message_pos = msg_part.id.split("_")[2];
-                    if (current_token_index == token_index && current_message_pos == msg_pos) {
-                        // Use the replacement token
-                        // TODO: Don't have access to the tokenizer here, and sometimes there needs to be a space added before this token
-                        msg_text += token_string //.replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"r", "g"), '').replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"n", "g"), '');
-                        break;
-                    }
-                    else {
-                        // Replace here or at the end?
-                        var text = msg_part.firstChild.innerHTML.replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"r", "g"), '').replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"n", "g"), '')
-                        msg_text += text;
+                    msg_part_name = msg_part.getAttribute("name")
+                    if (msg_part_name != null) {
+                        var current_token_index = msg_part_name.split("_")[1];
+                        var current_message_pos = msg_part_name.split("_")[2];
+                        if (current_token_index == token_index && current_message_pos == msg_pos) {
+                            // Use the replacement token
+                            // TODO: Don't have access to the tokenizer here, and sometimes there needs to be a space added before this token
+                            msg_text += token_string //.replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"r", "g"), '').replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"n", "g"), '');
+                            break;
+                        }
+                        else {
+                            // Replace here or at the end?
+                            var text = msg_part.firstChild.innerHTML.replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"r", "g"), '').replace(new RegExp(String.fromCharCode(92)+String.fromCharCode(92)+"n", "g"), '')
+                            msg_text += text;
+                        }
                     }
                 }
                 else {
