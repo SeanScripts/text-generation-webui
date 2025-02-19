@@ -108,6 +108,7 @@ def get_last_token(text, tokens_list, token_ids_list, token_probs_list):
 def output_modifier(text):
     global ppl_logits_processor
     #t0 = time.time()
+    original_text = text
 
     if not params['active'] or ppl_logits_processor is None:
         return text
@@ -154,6 +155,7 @@ def output_modifier(text):
     #i = 0
     # Add token index for ability to regenerate from there
     nonwhitespace_token_found = False
+    missing_token_count = 0
     for index, token, prob, ppl, top_tokens, top_probs in zip(range(len(gen_tokens)), gen_tokens, sel_probs, perplexities, top_tokens_list, top_probs_list):
         # Somehow this works without issues, but not sure how...
         if not nonwhitespace_token_found and token.strip() == '':
@@ -177,7 +179,13 @@ def output_modifier(text):
             # This might be slightly inefficient
             i += text[i:].find(end_part) + len(end_part)
         else:
+            missing_token_count += 1
             print('Missing token:', token, '...', text[i:i+20])
+            # If there are any missing tokens, then either the tokenization was off, or this is the start of a conversation, or something else went wrong
+        if missing_token_count > 5:
+            print("Canceling token coloring...")
+            return original_text
+
 
     # Use full perplexity list for calculating the average here.
     # Fix issue with mean of empty slice
